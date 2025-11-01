@@ -63,7 +63,10 @@ function App() {
       if (!response.ok) throw new Error("Error al guardar en el servidor.");
 
       tg.sendData(JSON.stringify({ status: "ok" }));
-      tg.close();
+
+      setTimeout(() => {
+        tg.close();
+      }, 100);
     } catch (error) {
       console.error("Error saving data:", error);
       tg.showAlert("No se pudieron guardar los cambios. Inténtalo de nuevo.");
@@ -90,31 +93,31 @@ function App() {
     [categorias]
   );
 
-  const handleToggle = (id, isParent) => {
+  const handleToggle = (id, isParentClick = false) => {
     setIsButtonEnabled(true);
     setSeleccionadas((prev) => {
       const nuevas = new Set(prev);
       const children = subcategoriasMap[id] || [];
       const childrenIds = children.map((c) => c.id);
+      const parentId = categorias.find((c) => c.id === id)?.padre_id;
 
-      if (isParent) {
-        const areAllSelected = childrenIds.every((childId) => nuevas.has(childId));
-        if (areAllSelected && childrenIds.length > 0) {
-          nuevas.delete(id);
+      if (isParentClick) {
+        const areAllSelected = childrenIds.length > 0 && childrenIds.every((childId) => nuevas.has(childId));
+        if (areAllSelected) {
           childrenIds.forEach((childId) => nuevas.delete(childId));
         } else {
-          nuevas.add(id);
           childrenIds.forEach((childId) => nuevas.add(childId));
         }
       } else {
         nuevas.has(id) ? nuevas.delete(id) : nuevas.add(id);
-        const parentId = categorias.find((cat) => cat.id === id)?.padre_id;
-        if (parentId) {
-          const parentChildrenIds = (subcategoriasMap[parentId] || []).map((c) => c.id);
-          const allChildrenSelected = parentChildrenIds.every((childId) => nuevas.has(childId));
-          allChildrenSelected ? nuevas.add(parentId) : nuevas.delete(parentId);
-        }
       }
+
+      if (parentId) {
+        const parentChildrenIds = (subcategoriasMap[parentId] || []).map((c) => c.id);
+        const allChildrenSelected = parentChildrenIds.every((childId) => nuevas.has(childId));
+        allChildrenSelected ? nuevas.add(parentId) : nuevas.delete(parentId);
+      }
+
       return nuevas;
     });
   };
@@ -150,7 +153,7 @@ function App() {
                 if (subcats.length > 0) {
                   setDrawerState({ open: true, categoria: cat });
                 } else {
-                  handleToggle(cat.id, true);
+                  handleToggle(cat.id, false);
                 }
               }}
             />
