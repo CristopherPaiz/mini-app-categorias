@@ -51,7 +51,7 @@ function App() {
           throw new Error("No se pudo obtener el ID de usuario de Telegram.");
         }
 
-        const apiUrl = "http://192.168.0.2:3001";
+        const apiUrl = import.meta.env.VITE_API_URL;
 
         const [categoriasRes, seleccionadasRes] = await Promise.all([
           fetch(`${apiUrl}/api/categorias`),
