@@ -43,12 +43,11 @@ p {
 .category-card {
   background-color: var(--tg-theme-secondary-bg-color);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  text-align: center;
+  justify-content: space-between;
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.2s ease-in-out;
@@ -61,6 +60,14 @@ p {
   background-color: color-mix(in srgb, var(--tg-theme-button-color) 15%, var(--tg-theme-secondary-bg-color));
 }
 
+.card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+}
+
 .category-card .emoji {
   font-size: 36px;
   line-height: 1;
@@ -71,6 +78,14 @@ p {
   font-size: 14px;
   font-weight: 500;
   color: var(--tg-theme-text-color);
+  text-align: center;
+}
+
+.card-checkbox-container {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 8px;
 }
 
 .drawer-overlay {
@@ -80,10 +95,12 @@ p {
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
   z-index: 10;
+  pointer-events: none;
 }
 
 .drawer-overlay.open {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .drawer-container {
@@ -136,7 +153,8 @@ p {
   cursor: pointer;
 }
 
-.subcategory-item input[type="checkbox"] {
+.subcategory-item input[type="checkbox"],
+.card-checkbox-container input[type="checkbox"] {
   display: none;
 }
 
@@ -162,12 +180,14 @@ p {
   transition: transform 0.2s ease;
 }
 
-.subcategory-item input[type="checkbox"]:checked + .custom-checkbox {
+.subcategory-item input[type="checkbox"]:checked + .custom-checkbox,
+.card-checkbox-container input[type="checkbox"]:checked + .custom-checkbox {
   border-color: var(--tg-theme-button-color);
   background-color: var(--tg-theme-button-color);
 }
 
-.subcategory-item input[type="checkbox"]:checked + .custom-checkbox .checkmark {
+.subcategory-item input[type="checkbox"]:checked + .custom-checkbox .checkmark,
+.card-checkbox-container input[type="checkbox"]:checked + .custom-checkbox .checkmark {
   transform: scale(1);
   background-color: var(--tg-theme-button-text-color);
 }

@@ -81,10 +81,11 @@ function App() {
   );
 
   const handleCategoryClick = (categoria) => {
-    handleToggle(categoria.id);
     const subcategorias = categoriasPorPadre[categoria.id] || [];
     if (subcategorias.length > 0) {
       setDrawerState({ open: true, categoria });
+    } else {
+      handleToggle(categoria.id);
     }
   };
 
@@ -99,6 +100,7 @@ function App() {
           categoriasPrincipales={categoriasPorPadre["principales"] || []}
           seleccionadas={seleccionadas}
           onCategoryClick={handleCategoryClick}
+          onToggle={handleToggle}
         />
       )}
       <SubcategoryDrawer
