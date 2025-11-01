@@ -36,7 +36,7 @@ p {
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 12px;
 }
 
@@ -46,18 +46,22 @@ p {
   padding: 12px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.2s ease-in-out;
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1 / 1.1;
 }
 
 .category-card.selected {
   border-color: var(--tg-theme-button-color);
   background-color: color-mix(in srgb, var(--tg-theme-button-color) 15%, var(--tg-theme-secondary-bg-color));
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .card-content {
@@ -66,10 +70,11 @@ p {
   align-items: center;
   justify-content: center;
   flex-grow: 1;
+  cursor: pointer;
 }
 
 .category-card .emoji {
-  font-size: 36px;
+  font-size: 32px;
   line-height: 1;
   margin-bottom: 8px;
 }
@@ -81,11 +86,15 @@ p {
   text-align: center;
 }
 
-.card-checkbox-container {
-  width: 100%;
-  display: flex;
-  justify-content: flex-start;
-  padding-top: 8px;
+.subcategory-button {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tg-theme-link-color);
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  margin-top: 8px;
 }
 
 .drawer-overlay {
@@ -153,11 +162,6 @@ p {
   cursor: pointer;
 }
 
-.subcategory-item input[type="checkbox"],
-.card-checkbox-container input[type="checkbox"] {
-  display: none;
-}
-
 .custom-checkbox {
   width: 22px;
   height: 22px;
@@ -169,6 +173,15 @@ p {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+.custom-checkbox.partial .checkmark {
+  width: 10px;
+  height: 10px;
+  background-color: var(--tg-theme-button-color);
+  border-radius: 2px;
+  transform: scale(1);
 }
 
 .custom-checkbox .checkmark {
@@ -181,26 +194,26 @@ p {
 }
 
 .subcategory-item input[type="checkbox"]:checked + .custom-checkbox,
-.card-checkbox-container input[type="checkbox"]:checked + .custom-checkbox {
+.card-header input[type="checkbox"]:checked + .custom-checkbox {
   border-color: var(--tg-theme-button-color);
   background-color: var(--tg-theme-button-color);
 }
 
 .subcategory-item input[type="checkbox"]:checked + .custom-checkbox .checkmark,
-.card-checkbox-container input[type="checkbox"]:checked + .custom-checkbox .checkmark {
+.card-header input[type="checkbox"]:checked + .custom-checkbox .checkmark {
   transform: scale(1);
   background-color: var(--tg-theme-button-text-color);
 }
 
 .skeleton-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 12px;
 }
 
 .skeleton-card {
   border-radius: 12px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1 / 1.1;
   background: linear-gradient(
     90deg,
     var(--tg-theme-secondary-bg-color) 25%,
