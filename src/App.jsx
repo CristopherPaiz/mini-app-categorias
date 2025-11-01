@@ -46,12 +46,30 @@ function App() {
     fetchInitialData();
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!isButtonEnabled) return;
     tg.MainButton.showProgress();
-    const dataToSend = JSON.stringify({ selectedIds: Array.from(seleccionadas) });
-    tg.sendData(dataToSend);
-    setTimeout(() => tg.close(), 500);
+    tg.MainButton.disable();
+
+    try {
+      const telegramId = tg.initDataUnsafe?.user?.id;
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/categorias`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedIds: Array.from(seleccionadas) }),
+      });
+
+      if (!response.ok) throw new Error("Error al guardar en el servidor.");
+
+      tg.sendData(JSON.stringify({ status: "ok" }));
+      tg.close();
+    } catch (error) {
+      console.error("Error saving data:", error);
+      tg.showAlert("No se pudieron guardar los cambios. Inténtalo de nuevo.");
+      tg.MainButton.hideProgress();
+      tg.MainButton.enable();
+    }
   }, [seleccionadas, isButtonEnabled]);
 
   useEffect(() => {
@@ -81,7 +99,7 @@ function App() {
 
       if (isParent) {
         const areAllSelected = childrenIds.every((childId) => nuevas.has(childId));
-        if (areAllSelected) {
+        if (areAllSelected && childrenIds.length > 0) {
           nuevas.delete(id);
           childrenIds.forEach((childId) => nuevas.delete(childId));
         } else {
@@ -90,11 +108,11 @@ function App() {
         }
       } else {
         nuevas.has(id) ? nuevas.delete(id) : nuevas.add(id);
-        const parent = categorias.find((cat) => cat.id === id)?.padre_id;
-        if (parent) {
-          const parentChildrenIds = (subcategoriasMap[parent] || []).map((c) => c.id);
+        const parentId = categorias.find((cat) => cat.id === id)?.padre_id;
+        if (parentId) {
+          const parentChildrenIds = (subcategoriasMap[parentId] || []).map((c) => c.id);
           const allChildrenSelected = parentChildrenIds.every((childId) => nuevas.has(childId));
-          allChildrenSelected ? nuevas.add(parent) : nuevas.delete(parent);
+          allChildrenSelected ? nuevas.add(parentId) : nuevas.delete(parentId);
         }
       }
       return nuevas;
@@ -123,7 +141,19 @@ function App() {
       ) : (
         <div className="category-grid">
           {categoriasPrincipales.map((cat) => (
-            <CategoryCard key={cat.id} categoria={cat} state={getParentState(cat)} onClick={() => setDrawerState({ open: true, categoria: cat })} />
+            <CategoryCard
+              key={cat.id}
+              categoria={cat}
+              state={getParentState(cat)}
+              onClick={() => {
+                const subcats = subcategoriasMap[cat.id] || [];
+                if (subcats.length > 0) {
+                  setDrawerState({ open: true, categoria: cat });
+                } else {
+                  handleToggle(cat.id, true);
+                }
+              }}
+            />
           ))}
         </div>
       )}
