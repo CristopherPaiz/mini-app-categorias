@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import CategoryList from "./components/CategoryList";
+import CategoryGrid from "./components/CategoryGrid";
+import SubcategoryDrawer from "./components/SubcategoryDrawer";
 import SkeletonLoader from "./components/Loader";
 import "./App.css";
 
@@ -10,12 +11,15 @@ function App() {
   const [seleccionadas, setSeleccionadas] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
+  const [drawerState, setDrawerState] = useState({ open: false, categoria: null });
 
   useEffect(() => {
     tg.ready();
     tg.expand();
-    document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f0f0f0";
+    document.body.style.backgroundColor = tg.themeParams.bg_color || "#ffffff";
+  }, []);
 
+  useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const telegramId = tg.initDataUnsafe?.user?.id;
@@ -31,10 +35,7 @@ function App() {
         const seleccionadasData = await seleccionadasRes.json();
 
         if (categoriasData.status === "success") setCategorias(categoriasData.data.categorias);
-        if (seleccionadasData.status === "success") {
-          const initialSelected = new Set(seleccionadasData.data.selectedIds);
-          setSeleccionadas(initialSelected);
-        }
+        if (seleccionadasData.status === "success") setSeleccionadas(new Set(seleccionadasData.data.selectedIds));
       } catch (error) {
         console.error("Error fetching initial data:", error);
         tg.showAlert("No se pudieron cargar los datos. Por favor, intenta de nuevo más tarde.");
@@ -42,36 +43,24 @@ function App() {
         setLoading(false);
       }
     };
-
     fetchInitialData();
   }, []);
 
   const handleSave = useCallback(() => {
     if (!isButtonEnabled) return;
-
     tg.MainButton.showProgress();
     const dataToSend = JSON.stringify({ selectedIds: Array.from(seleccionadas) });
     tg.sendData(dataToSend);
-
-    setTimeout(() => {
-      tg.close();
-    }, 500);
+    setTimeout(() => tg.close(), 500);
   }, [seleccionadas, isButtonEnabled]);
 
   useEffect(() => {
-    tg.MainButton.setParams({
-      text: "Guardar Cambios",
-      is_active: isButtonEnabled,
-      is_visible: true,
-    });
+    tg.MainButton.setParams({ text: "Guardar Cambios", is_active: isButtonEnabled, is_visible: true });
     tg.onEvent("mainButtonClicked", handleSave);
-
-    return () => {
-      tg.offEvent("mainButtonClicked", handleSave);
-    };
+    return () => tg.offEvent("mainButtonClicked", handleSave);
   }, [handleSave, isButtonEnabled]);
 
-  const handleToggleCategoria = (id) => {
+  const handleToggle = (id) => {
     setIsButtonEnabled(true);
     setSeleccionadas((prev) => {
       const nuevas = new Set(prev);
@@ -80,11 +69,46 @@ function App() {
     });
   };
 
+  const categoriasPorPadre = React.useMemo(
+    () =>
+      categorias.reduce((acc, cat) => {
+        const padreId = cat.padre_id || "principales";
+        if (!acc[padreId]) acc[padreId] = [];
+        acc[padreId].push(cat);
+        return acc;
+      }, {}),
+    [categorias]
+  );
+
+  const handleCategoryClick = (categoria) => {
+    handleToggle(categoria.id);
+    const subcategorias = categoriasPorPadre[categoria.id] || [];
+    if (subcategorias.length > 0) {
+      setDrawerState({ open: true, categoria });
+    }
+  };
+
   return (
-    <div>
-      <h1>Selecciona tus Categorías</h1>
-      <p>Elige todo lo que te interesa para recibir ofertas personalizadas.</p>
-      {loading ? <SkeletonLoader /> : <CategoryList categorias={categorias} seleccionadas={seleccionadas} onToggle={handleToggleCategoria} />}
+    <div className="app-container">
+      <h1>Selecciona tus Intereses</h1>
+      <p>Elige las categorías que más te gusten para recibir ofertas personalizadas.</p>
+      {loading ? (
+        <SkeletonLoader />
+      ) : (
+        <CategoryGrid
+          categoriasPrincipales={categoriasPorPadre["principales"] || []}
+          seleccionadas={seleccionadas}
+          onCategoryClick={handleCategoryClick}
+        />
+      )}
+      <SubcategoryDrawer
+        open={drawerState.open}
+        onOpenChange={(open) => setDrawerState({ ...drawerState, open })}
+        categoria={drawerState.categoria}
+        subcategorias={categoriasPorPadre[drawerState.categoria?.id] || []}
+        seleccionadas={seleccionadas}
+        onToggle={handleToggle}
+      />
     </div>
   );
 }
