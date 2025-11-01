@@ -1,58 +1,27 @@
 import React, { useState, useEffect, useCallback } from "react";
-import PropTypes from "prop-types";
+import CategoryList from "./components/CategoryList";
+import SkeletonLoader from "./components/Loader";
 import "./App.css";
 
 const tg = window.Telegram.WebApp;
-
-const CategoriaItem = ({ categoria, categoriasPorPadre, seleccionadas, onToggle }) => {
-  const subcategorias = categoriasPorPadre[categoria.id] || [];
-  const estaSeleccionada = seleccionadas.has(categoria.id);
-
-  return (
-    <li className="category-item">
-      <label className="category-label">
-        <input type="checkbox" checked={estaSeleccionada} onChange={() => onToggle(categoria.id)} />
-        {categoria.emoji} {categoria.nombre}
-      </label>
-      {subcategorias.length > 0 && (
-        <ul>
-          {subcategorias.map((sub) => (
-            <CategoriaItem key={sub.id} categoria={sub} categoriasPorPadre={categoriasPorPadre} seleccionadas={seleccionadas} onToggle={onToggle} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-};
-
-CategoriaItem.propTypes = {
-  categoria: PropTypes.object.isRequired,
-  categoriasPorPadre: PropTypes.object.isRequired,
-  seleccionadas: PropTypes.instanceOf(Set).isRequired,
-  onToggle: PropTypes.func.isRequired,
-};
 
 function App() {
   const [categorias, setCategorias] = useState([]);
   const [seleccionadas, setSeleccionadas] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [isButtonEnabled, setIsButtonEnabled] = useState(false);
 
   useEffect(() => {
     tg.ready();
     tg.expand();
-
-    tg.setHeaderColor(tg.themeParams.bg_color || "#ffffff");
-    document.body.style.backgroundColor = tg.themeParams.bg_color || "#ffffff";
+    document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f0f0f0";
 
     const fetchInitialData = async () => {
       try {
         const telegramId = tg.initDataUnsafe?.user?.id;
-        if (!telegramId) {
-          throw new Error("No se pudo obtener el ID de usuario de Telegram.");
-        }
+        if (!telegramId) throw new Error("ID de usuario no disponible.");
 
         const apiUrl = import.meta.env.VITE_API_URL;
-
         const [categoriasRes, seleccionadasRes] = await Promise.all([
           fetch(`${apiUrl}/api/categorias`),
           fetch(`${apiUrl}/api/usuario/${telegramId}/categorias`),
@@ -61,15 +30,14 @@ function App() {
         const categoriasData = await categoriasRes.json();
         const seleccionadasData = await seleccionadasRes.json();
 
-        if (categoriasData.status === "success") {
-          setCategorias(categoriasData.data.categorias);
-        }
+        if (categoriasData.status === "success") setCategorias(categoriasData.data.categorias);
         if (seleccionadasData.status === "success") {
-          setSeleccionadas(new Set(seleccionadasData.data.selectedIds));
+          const initialSelected = new Set(seleccionadasData.data.selectedIds);
+          setSeleccionadas(initialSelected);
         }
       } catch (error) {
         console.error("Error fetching initial data:", error);
-        tg.showAlert("No se pudieron cargar los datos. Por favor, intenta de nuevo.");
+        tg.showAlert("No se pudieron cargar los datos. Por favor, intenta de nuevo más tarde.");
       } finally {
         setLoading(false);
       }
@@ -79,60 +47,44 @@ function App() {
   }, []);
 
   const handleSave = useCallback(() => {
+    if (!isButtonEnabled) return;
+
+    tg.MainButton.showProgress();
     const dataToSend = JSON.stringify({ selectedIds: Array.from(seleccionadas) });
     tg.sendData(dataToSend);
-  }, [seleccionadas]);
+
+    setTimeout(() => {
+      tg.close();
+    }, 500);
+  }, [seleccionadas, isButtonEnabled]);
 
   useEffect(() => {
-    tg.MainButton.text = "Guardar Cambios";
-    tg.MainButton.onClick(handleSave);
-    tg.MainButton.show();
+    tg.MainButton.setParams({
+      text: "Guardar Cambios",
+      is_active: isButtonEnabled,
+      is_visible: true,
+    });
+    tg.onEvent("mainButtonClicked", handleSave);
 
     return () => {
-      tg.MainButton.offClick(handleSave);
+      tg.offEvent("mainButtonClicked", handleSave);
     };
-  }, [handleSave]);
+  }, [handleSave, isButtonEnabled]);
 
   const handleToggleCategoria = (id) => {
+    setIsButtonEnabled(true);
     setSeleccionadas((prev) => {
       const nuevas = new Set(prev);
-      if (nuevas.has(id)) {
-        nuevas.delete(id);
-      } else {
-        nuevas.add(id);
-      }
+      nuevas.has(id) ? nuevas.delete(id) : nuevas.add(id);
       return nuevas;
     });
   };
 
-  const categoriasPorPadre = categorias.reduce((acc, cat) => {
-    const padreId = cat.padre_id || "principales";
-    if (!acc[padreId]) acc[padreId] = [];
-    acc[padreId].push(cat);
-    return acc;
-  }, {});
-
-  const categoriasPrincipales = categoriasPorPadre["principales"] || [];
-
-  if (loading) {
-    return <div>Cargando categorías...</div>;
-  }
-
   return (
     <div>
       <h1>Selecciona tus Categorías</h1>
-      <p>Elige las categorías que más te interesan para recibir ofertas personalizadas.</p>
-      <ul>
-        {categoriasPrincipales.map((cat) => (
-          <CategoriaItem
-            key={cat.id}
-            categoria={cat}
-            categoriasPorPadre={categoriasPorPadre}
-            seleccionadas={seleccionadas}
-            onToggle={handleToggleCategoria}
-          />
-        ))}
-      </ul>
+      <p>Elige todo lo que te interesa para recibir ofertas personalizadas.</p>
+      {loading ? <SkeletonLoader /> : <CategoryList categorias={categorias} seleccionadas={seleccionadas} onToggle={handleToggleCategoria} />}
     </div>
   );
 }
