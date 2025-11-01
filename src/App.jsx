@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import CategoryItem from "./components/CategoryItem";
+import CategoryCard from "./components/CategoryCard";
+import SubcategoryDrawer from "./components/SubcategoryDrawer";
 import SkeletonLoader from "./components/Loader";
 import "./App.css";
 
@@ -10,6 +11,7 @@ function App() {
   const [seleccionadas, setSeleccionadas] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
+  const [drawerState, setDrawerState] = useState({ open: false, categoria: null });
 
   useEffect(() => {
     tg.ready();
@@ -70,25 +72,44 @@ function App() {
     [categorias]
   );
 
-  const handleToggle = (id, isParentToggle) => {
+  const handleToggle = (id, isParent) => {
     setIsButtonEnabled(true);
     setSeleccionadas((prev) => {
       const nuevas = new Set(prev);
       const children = subcategoriasMap[id] || [];
       const childrenIds = children.map((c) => c.id);
 
-      if (isParentToggle) {
-        const areAllChildrenSelected = childrenIds.every((childId) => prev.has(childId));
-        if (areAllChildrenSelected) {
+      if (isParent) {
+        const areAllSelected = childrenIds.every((childId) => nuevas.has(childId));
+        if (areAllSelected) {
+          nuevas.delete(id);
           childrenIds.forEach((childId) => nuevas.delete(childId));
         } else {
+          nuevas.add(id);
           childrenIds.forEach((childId) => nuevas.add(childId));
         }
       } else {
         nuevas.has(id) ? nuevas.delete(id) : nuevas.add(id);
+        const parent = categorias.find((cat) => cat.id === id)?.padre_id;
+        if (parent) {
+          const parentChildrenIds = (subcategoriasMap[parent] || []).map((c) => c.id);
+          const allChildrenSelected = parentChildrenIds.every((childId) => nuevas.has(childId));
+          allChildrenSelected ? nuevas.add(parent) : nuevas.delete(parent);
+        }
       }
       return nuevas;
     });
+  };
+
+  const getParentState = (cat) => {
+    const children = subcategoriasMap[cat.id] || [];
+    if (children.length === 0) {
+      return seleccionadas.has(cat.id) ? "selected" : "";
+    }
+    const selectedCount = children.filter((sub) => seleccionadas.has(sub.id)).length;
+    if (selectedCount === 0) return "";
+    if (selectedCount === children.length) return "selected";
+    return "partial";
   };
 
   const categoriasPrincipales = useMemo(() => categorias.filter((c) => !c.padre_id), [categorias]);
@@ -96,22 +117,24 @@ function App() {
   return (
     <div className="app-container">
       <h1>Selecciona tus Intereses</h1>
-      <p>Elige las categorías que más te gusten para recibir ofertas personalizadas.</p>
+      <p>Toca una categoría para ver más detalles y afinar tu selección.</p>
       {loading ? (
         <SkeletonLoader />
       ) : (
-        <div className="category-list">
+        <div className="category-grid">
           {categoriasPrincipales.map((cat) => (
-            <CategoryItem
-              key={cat.id}
-              categoria={cat}
-              subcategorias={subcategoriasMap[cat.id] || []}
-              seleccionadas={seleccionadas}
-              onToggle={handleToggle}
-            />
+            <CategoryCard key={cat.id} categoria={cat} state={getParentState(cat)} onClick={() => setDrawerState({ open: true, categoria: cat })} />
           ))}
         </div>
       )}
+      <SubcategoryDrawer
+        open={drawerState.open}
+        onOpenChange={(open) => setDrawerState({ ...drawerState, open })}
+        categoria={drawerState.categoria}
+        subcategorias={subcategoriasMap[drawerState.categoria?.id] || []}
+        seleccionadas={seleccionadas}
+        onToggle={handleToggle}
+      />
     </div>
   );
 }
