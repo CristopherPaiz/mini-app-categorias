@@ -1,0 +1,33 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: light dark;
+  color: var(--tg-theme-text-color);
+  background-color: var(--tg-theme-bg-color);
+}
+
+body {
+  margin: 0;
+  padding: 1rem;
+  min-width: 320px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 20px;
+}
+
+.category-item {
+  margin: 8px 0;
+}
+
+.category-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.category-label input {
+  margin-right: 10px;
+}
