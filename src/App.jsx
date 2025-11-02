@@ -65,38 +65,31 @@ function App() {
     fetchInitialData();
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
+    console.log("[MINIAPP LOG] Se ha presionado 'Guardar Cambios'.");
     tg.MainButton.showProgress();
     tg.MainButton.disable();
 
+    const dataToSend = {
+      type: "save_configuration",
+      payload: {
+        nombre: preferencias.nombre,
+        porcentajeDescuento: preferencias.porcentaje,
+        precioMin: preferencias.precioMin,
+        precioMax: preferencias.precioMax,
+        selectedIds: Array.from(preferencias.seleccionadas),
+      },
+    };
+
+    console.log("[MINIAPP LOG] Preparando para enviar los siguientes datos al bot:", JSON.stringify(dataToSend, null, 2));
+
     try {
-      const telegramId = tg.initDataUnsafe?.user?.id;
-      const apiUrl = import.meta.env.VITE_API_URL;
-
-      console.log(`[MINIAPP_DEBUG] Intentando hacer fetch a: ${apiUrl}/api/usuario/${telegramId}/configuracion`);
-
-      const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/configuracion`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: preferencias.nombre,
-          porcentajeDescuento: preferencias.porcentaje,
-          precioMin: preferencias.precioMin,
-          precioMax: preferencias.precioMax,
-          selectedIds: Array.from(preferencias.seleccionadas),
-        }),
-      });
-
-      if (!response.ok) {
-        console.error("[MINIAPP_DEBUG] El fetch falló. Status:", response.status);
-        throw new Error("Error al guardar en el servidor.");
-      }
-
-      tg.sendData(JSON.stringify({ status: "success" }));
+      tg.sendData(JSON.stringify(dataToSend));
+      console.log("[MINIAPP LOG] tg.sendData ejecutado con éxito.");
       tg.close();
     } catch (error) {
-      console.error("[MINIAPP_DEBUG] Error en el bloque CATCH de handleSave:", error);
-      tg.showAlert(`Hubo un error de comunicación. Revisa la consola. Error: ${error.message}`);
+      console.error("[MINIAPP LOG] ERROR CATASTRÓFICO al intentar ejecutar tg.sendData:", error);
+      tg.showAlert(`Error al enviar datos: ${error.message}`);
       tg.MainButton.hideProgress();
       tg.MainButton.enable();
     }
