@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import CategoryCard from "./components/CategoryCard";
+import PasoPorcentaje from "./components/PasoPorcentaje";
+import PasoPrecios from "./components/PasoPrecios";
+import PasoCategorias from "./components/PasoCategorias";
 import SubcategoryDrawer from "./components/SubcategoryDrawer";
 import SkeletonLoader from "./components/Loader";
 import "./App.css";
@@ -7,16 +9,21 @@ import "./App.css";
 const tg = window.Telegram.WebApp;
 
 function App() {
-  const [categorias, setCategorias] = useState([]);
-  const [seleccionadas, setSeleccionadas] = useState(new Set());
+  const [paso, setPaso] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [isButtonEnabled, setIsButtonEnabled] = useState(false);
   const [drawerState, setDrawerState] = useState({ open: false, categoria: null });
+  const [categorias, setCategorias] = useState([]);
+
+  const [preferencias, setPreferencias] = useState({
+    porcentaje: 50,
+    precioMin: 0,
+    precioMax: 10000,
+    seleccionadas: new Set(),
+  });
 
   useEffect(() => {
     tg.ready();
     tg.expand();
-    document.body.style.backgroundColor = tg.themeParams.bg_color || "#ffffff";
   }, []);
 
   useEffect(() => {
@@ -26,16 +33,25 @@ function App() {
         if (!telegramId) throw new Error("ID de usuario no disponible.");
 
         const apiUrl = import.meta.env.VITE_API_URL;
-        const [categoriasRes, seleccionadasRes] = await Promise.all([
+        const [categoriasRes, preferenciasRes] = await Promise.all([
           fetch(`${apiUrl}/api/categorias`),
-          fetch(`${apiUrl}/api/usuario/${telegramId}/categorias`),
+          fetch(`${apiUrl}/api/usuario/${telegramId}/preferencias`),
         ]);
 
         const categoriasData = await categoriasRes.json();
-        const seleccionadasData = await seleccionadasRes.json();
+        const preferenciasData = await preferenciasRes.json();
 
-        if (categoriasData.status === "success") setCategorias(categoriasData.data.categorias);
-        if (seleccionadasData.status === "success") setSeleccionadas(new Set(seleccionadasData.data.selectedIds));
+        if (categoriasData.status === "success") {
+          setCategorias(categoriasData.data.categorias);
+        }
+        if (preferenciasData.status === "success") {
+          setPreferencias({
+            porcentaje: preferenciasData.data.porcentajeDescuento,
+            precioMin: preferenciasData.data.precioMin,
+            precioMax: preferenciasData.data.precioMax,
+            seleccionadas: new Set(preferenciasData.data.selectedIds),
+          });
+        }
       } catch (error) {
         console.error("Error fetching initial data:", error);
         tg.showAlert("No se pudieron cargar los datos. Por favor, intenta de nuevo más tarde.");
@@ -47,39 +63,63 @@ function App() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!isButtonEnabled) return;
     tg.MainButton.showProgress();
     tg.MainButton.disable();
 
     try {
       const telegramId = tg.initDataUnsafe?.user?.id;
       const apiUrl = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/categorias`, {
+      const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/configuracion`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedIds: Array.from(seleccionadas) }),
+        body: JSON.stringify({
+          porcentajeDescuento: preferencias.porcentaje,
+          precioMin: preferencias.precioMin,
+          precioMax: preferencias.precioMax,
+          selectedIds: Array.from(preferencias.seleccionadas),
+        }),
       });
 
       if (!response.ok) throw new Error("Error al guardar en el servidor.");
 
-      tg.sendData(JSON.stringify({ status: "ok" }));
-
-      setTimeout(() => {
-        tg.close();
-      }, 100);
+      tg.sendData(JSON.stringify({ status: "success" }));
+      tg.close();
     } catch (error) {
       console.error("Error saving data:", error);
       tg.showAlert("No se pudieron guardar los cambios. Inténtalo de nuevo.");
       tg.MainButton.hideProgress();
       tg.MainButton.enable();
     }
-  }, [seleccionadas, isButtonEnabled]);
+  }, [preferencias]);
+
+  const handleNext = () => setPaso((p) => Math.min(p + 1, 3));
 
   useEffect(() => {
-    tg.MainButton.setParams({ text: "Guardar Cambios", is_active: isButtonEnabled, is_visible: true });
-    tg.onEvent("mainButtonClicked", handleSave);
-    return () => tg.offEvent("mainButtonClicked", handleSave);
-  }, [handleSave, isButtonEnabled]);
+    const buttonText = paso === 3 ? "Guardar Cambios" : "Siguiente";
+    const buttonAction = paso === 3 ? handleSave : handleNext;
+
+    tg.MainButton.setParams({ text: buttonText, is_active: true, is_visible: !loading });
+    tg.onEvent("mainButtonClicked", buttonAction);
+
+    return () => tg.offEvent("mainButtonClicked", buttonAction);
+  }, [paso, handleSave, loading]);
+
+  useEffect(() => {
+    if (paso > 1) {
+      tg.BackButton.show();
+    } else {
+      tg.BackButton.hide();
+    }
+  }, [paso]);
+
+  const handleBack = useCallback(() => {
+    setPaso((p) => Math.max(p - 1, 1));
+  }, []);
+
+  useEffect(() => {
+    tg.onEvent("backButtonClicked", handleBack);
+    return () => tg.offEvent("backButtonClicked", handleBack);
+  }, [handleBack]);
 
   const subcategoriasMap = useMemo(
     () =>
@@ -93,71 +133,66 @@ function App() {
     [categorias]
   );
 
-  const handleToggle = (id, isParentClick = false) => {
-    setIsButtonEnabled(true);
-    setSeleccionadas((prev) => {
-      const nuevas = new Set(prev);
+  const handleToggleCategoria = (id, isParentClick = false) => {
+    setPreferencias((prev) => {
+      const nuevasSeleccionadas = new Set(prev.seleccionadas);
       const children = subcategoriasMap[id] || [];
       const childrenIds = children.map((c) => c.id);
-      const parentId = categorias.find((c) => c.id === id)?.padre_id;
 
       if (isParentClick) {
-        const areAllSelected = childrenIds.length > 0 && childrenIds.every((childId) => nuevas.has(childId));
+        const areAllSelected = childrenIds.length > 0 && childrenIds.every((childId) => nuevasSeleccionadas.has(childId));
         if (areAllSelected) {
-          childrenIds.forEach((childId) => nuevas.delete(childId));
+          childrenIds.forEach((childId) => nuevasSeleccionadas.delete(childId));
         } else {
-          childrenIds.forEach((childId) => nuevas.add(childId));
+          childrenIds.forEach((childId) => nuevasSeleccionadas.add(childId));
         }
       } else {
-        nuevas.has(id) ? nuevas.delete(id) : nuevas.add(id);
+        nuevasSeleccionadas.has(id) ? nuevasSeleccionadas.delete(id) : nuevasSeleccionadas.add(id);
       }
-
-      if (parentId) {
-        const parentChildrenIds = (subcategoriasMap[parentId] || []).map((c) => c.id);
-        const allChildrenSelected = parentChildrenIds.every((childId) => nuevas.has(childId));
-        allChildrenSelected ? nuevas.add(parentId) : nuevas.delete(parentId);
-      }
-
-      return nuevas;
+      return { ...prev, seleccionadas: nuevasSeleccionadas };
     });
-  };
-
-  const getParentState = (cat) => {
-    const children = subcategoriasMap[cat.id] || [];
-    if (children.length === 0) {
-      return seleccionadas.has(cat.id) ? "selected" : "";
-    }
-    const selectedCount = children.filter((sub) => seleccionadas.has(sub.id)).length;
-    if (selectedCount === 0) return "";
-    if (selectedCount === children.length) return "selected";
-    return "partial";
   };
 
   const categoriasPrincipales = useMemo(() => categorias.filter((c) => !c.padre_id), [categorias]);
 
+  const renderStep = () => {
+    switch (paso) {
+      case 1:
+        return (
+          <PasoPorcentaje porcentaje={preferencias.porcentaje} onPorcentajeChange={(p) => setPreferencias({ ...preferencias, porcentaje: p })} />
+        );
+      case 2:
+        return (
+          <PasoPrecios
+            precioMin={preferencias.precioMin}
+            precioMax={preferencias.precioMax}
+            onPreciosChange={(min, max) => setPreferencias({ ...preferencias, precioMin: min, precioMax: max })}
+          />
+        );
+      case 3:
+        return (
+          <PasoCategorias
+            categoriasPrincipales={categoriasPrincipales}
+            subcategoriasMap={subcategoriasMap}
+            seleccionadas={preferencias.seleccionadas}
+            onToggle={handleToggleCategoria}
+            onOpenDrawer={(cat) => setDrawerState({ open: true, categoria: cat })}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="app-container">
-      <h1>Selecciona tus Intereses</h1>
-      <p>Toca una categoría para ver más detalles y afinar tu selección.</p>
       {loading ? (
         <SkeletonLoader />
       ) : (
-        <div className="category-grid">
-          {categoriasPrincipales.map((cat) => (
-            <CategoryCard
-              key={cat.id}
-              categoria={cat}
-              state={getParentState(cat)}
-              onClick={() => {
-                const subcats = subcategoriasMap[cat.id] || [];
-                if (subcats.length > 0) {
-                  setDrawerState({ open: true, categoria: cat });
-                } else {
-                  handleToggle(cat.id, false);
-                }
-              }}
-            />
-          ))}
+        <div className="stepper-content">
+          <div className={`step-wrapper ${paso === 1 ? "active" : ""}`}>{renderStep()}</div>
+          <div className={`step-wrapper ${paso === 2 ? "active" : ""}`}>{renderStep()}</div>
+          <div className={`step-wrapper ${paso === 3 ? "active" : ""}`}>{renderStep()}</div>
         </div>
       )}
       <SubcategoryDrawer
@@ -165,8 +200,8 @@ function App() {
         onOpenChange={(open) => setDrawerState({ ...drawerState, open })}
         categoria={drawerState.categoria}
         subcategorias={subcategoriasMap[drawerState.categoria?.id] || []}
-        seleccionadas={seleccionadas}
-        onToggle={handleToggle}
+        seleccionadas={preferencias.seleccionadas}
+        onToggle={handleToggleCategoria}
       />
     </div>
   );

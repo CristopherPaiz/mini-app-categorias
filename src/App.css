@@ -13,18 +13,55 @@ body {
   padding: 16px;
   min-height: 100vh;
   background-color: var(--tg-theme-bg-color);
+  overflow: hidden;
 }
 
 .app-container {
   max-width: 600px;
   margin: 0 auto;
+  position: relative;
 }
 
-h1 {
+.stepper-content {
+  display: flex;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+.step-wrapper {
+  width: 100%;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+  visibility: hidden;
+}
+
+.step-wrapper.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.step-container {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h2 {
   color: var(--tg-theme-text-color);
   font-size: 24px;
   font-weight: 700;
   margin-top: 0;
+  margin-bottom: 8px;
   text-align: center;
 }
 
@@ -32,8 +69,112 @@ p {
   color: var(--tg-theme-hint-color);
   margin-bottom: 24px;
   text-align: center;
+  font-size: 15px;
 }
 
+/* Paso Porcentaje */
+.percentage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+.percentage-button {
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 2px solid var(--tg-theme-secondary-bg-color);
+  background-color: var(--tg-theme-secondary-bg-color);
+  color: var(--tg-theme-text-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.percentage-button:hover {
+  border-color: var(--tg-theme-hint-color);
+}
+
+.percentage-button.selected {
+  background-color: var(--tg-theme-button-color);
+  color: var(--tg-theme-button-text-color);
+  border-color: var(--tg-theme-button-color);
+}
+
+/* Paso Precios */
+.price-range-container {
+  padding: 20px 10px;
+}
+
+.price-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--tg-theme-text-color);
+}
+
+.range-slider-container {
+  position: relative;
+  height: 35px;
+  display: flex;
+  align-items: center;
+}
+
+.slider {
+  position: relative;
+  width: 100%;
+}
+
+.slider-track,
+.slider-range {
+  position: absolute;
+  border-radius: 3px;
+  height: 5px;
+}
+
+.slider-track {
+  background-color: var(--tg-theme-secondary-bg-color);
+  width: 100%;
+  z-index: 1;
+}
+
+.slider-range {
+  background-color: var(--tg-theme-button-color);
+  z-index: 2;
+}
+
+.thumb {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 100%;
+  outline: none;
+  position: absolute;
+  margin: 0;
+  height: 100%;
+  background-color: transparent;
+  pointer-events: none;
+}
+
+.thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  pointer-events: all;
+  width: 24px;
+  height: 24px;
+  background-color: white;
+  border-radius: 50%;
+  border: 3px solid var(--tg-theme-button-color);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  position: relative;
+  z-index: 3;
+}
+
+/* Paso Categorías */
 .category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -43,7 +184,7 @@ p {
 .category-card {
   background-color: var(--tg-theme-secondary-bg-color);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -60,23 +201,39 @@ p {
   border-color: var(--tg-theme-button-color);
 }
 
-.category-card.partial {
+.category-card.partial-border {
   border-color: var(--tg-theme-hint-color);
   border-style: dashed;
 }
 
+.card-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .category-card .emoji {
-  font-size: 36px;
+  font-size: 32px;
   line-height: 1;
   margin-bottom: 8px;
 }
 
 .category-card .name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--tg-theme-text-color);
 }
 
+.subcategory-indicator {
+  font-size: 11px;
+  color: var(--tg-theme-hint-color);
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* Drawer & Loader (existentes, sin cambios) */
 .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -86,12 +243,10 @@ p {
   z-index: 10;
   pointer-events: none;
 }
-
 .drawer-overlay.open {
   opacity: 1;
   pointer-events: auto;
 }
-
 .drawer-container {
   position: fixed;
   bottom: 0;
@@ -109,11 +264,9 @@ p {
   max-height: 70vh;
   overflow-y: auto;
 }
-
 .drawer-container.open {
   transform: translateY(0);
 }
-
 .drawer-handle {
   width: 40px;
   height: 4px;
@@ -121,20 +274,20 @@ p {
   border-radius: 2px;
   margin: 0 auto 16px;
 }
-
 .drawer-container h2 {
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 24px 0;
   text-align: center;
 }
-
 .selection-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .selection-item {
   display: flex;
   align-items: center;
@@ -144,17 +297,14 @@ p {
   border-radius: 8px;
   transition: background-color 0.2s ease;
 }
-
 .selection-item:hover {
   background-color: rgba(128, 128, 128, 0.1);
 }
-
 .selection-item.parent {
   font-weight: 600;
   border-bottom: 1px solid var(--tg-theme-bg-color);
   margin-bottom: 8px;
 }
-
 .custom-checkbox {
   width: 22px;
   height: 22px;
@@ -167,7 +317,6 @@ p {
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
-
 .custom-checkbox.partial .checkmark {
   width: 10px;
   height: 10px;
@@ -176,7 +325,6 @@ p {
   border-radius: 2px;
   transform: scale(1);
 }
-
 .custom-checkbox .checkmark {
   width: 12px;
   height: 12px;
@@ -185,22 +333,18 @@ p {
   transform: scale(0);
   transition: transform 0.2s ease;
 }
-
 .custom-checkbox.checked {
   border-color: var(--tg-theme-button-color);
   background-color: var(--tg-theme-button-color);
 }
-
 .custom-checkbox.checked .checkmark {
   transform: scale(1);
 }
-
 .skeleton-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 12px;
 }
-
 .skeleton-card {
   border-radius: 12px;
   aspect-ratio: 1 / 1;
@@ -213,7 +357,6 @@ p {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
-
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
