@@ -10,7 +10,7 @@ const PasoPrecios = ({ precioMin, precioMax, onPreciosChange }) => {
 
   return (
     <div className="step-container">
-      <h2>💰 Paso 2: Rango de Precios</h2>
+      <h2>💰 Paso 3: Rango de Precios</h2>
       <p>Ajusta el control deslizante para establecer el rango de precios que se ajuste a tu presupuesto.</p>
       <div className="price-range-container">
         <div className="price-labels">

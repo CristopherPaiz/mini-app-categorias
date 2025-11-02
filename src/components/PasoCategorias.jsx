@@ -15,7 +15,7 @@ const PasoCategorias = ({ categoriasPrincipales, subcategoriasMap, seleccionadas
 
   return (
     <div className="step-container">
-      <h2>🏷️ Paso 3: Tus Intereses</h2>
+      <h2>🏷️ Paso 4: Tus Intereses</h2>
       <p>Selecciona las categorías que más te gusten. Toca una para ver y elegir subcategorías más específicas.</p>
       <div className="category-grid">
         {categoriasPrincipales.map((cat) => {

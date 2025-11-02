@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import PasoNombre from "./components/PasoNombre";
 import PasoPorcentaje from "./components/PasoPorcentaje";
 import PasoPrecios from "./components/PasoPrecios";
 import PasoCategorias from "./components/PasoCategorias";
@@ -15,6 +16,7 @@ function App() {
   const [categorias, setCategorias] = useState([]);
 
   const [preferencias, setPreferencias] = useState({
+    nombre: "",
     porcentaje: 50,
     precioMin: 0,
     precioMax: 10000,
@@ -46,6 +48,7 @@ function App() {
         }
         if (preferenciasData.status === "success") {
           setPreferencias({
+            nombre: preferenciasData.data.nombre,
             porcentaje: preferenciasData.data.porcentajeDescuento,
             precioMin: preferenciasData.data.precioMin,
             precioMax: preferenciasData.data.precioMax,
@@ -73,6 +76,7 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          nombre: preferencias.nombre,
           porcentajeDescuento: preferencias.porcentaje,
           precioMin: preferencias.precioMin,
           precioMax: preferencias.precioMax,
@@ -92,17 +96,18 @@ function App() {
     }
   }, [preferencias]);
 
-  const handleNext = () => setPaso((p) => Math.min(p + 1, 3));
+  const handleNext = () => setPaso((p) => Math.min(p + 1, 4));
 
   useEffect(() => {
-    const buttonText = paso === 3 ? "Guardar Cambios" : "Siguiente";
-    const buttonAction = paso === 3 ? handleSave : handleNext;
+    const buttonText = paso === 4 ? "Guardar Cambios" : "Siguiente";
+    const buttonAction = paso === 4 ? handleSave : handleNext;
+    const isEnabled = paso === 1 ? preferencias.nombre.trim().length > 0 : true;
 
-    tg.MainButton.setParams({ text: buttonText, is_active: true, is_visible: !loading });
+    tg.MainButton.setParams({ text: buttonText, is_active: isEnabled, is_visible: !loading });
     tg.onEvent("mainButtonClicked", buttonAction);
 
     return () => tg.offEvent("mainButtonClicked", buttonAction);
-  }, [paso, handleSave, loading]);
+  }, [paso, handleSave, loading, preferencias.nombre]);
 
   const handleBack = useCallback(() => {
     setPaso((p) => Math.max(p - 1, 1));
@@ -155,10 +160,12 @@ function App() {
   const renderStep = () => {
     switch (paso) {
       case 1:
+        return <PasoNombre nombre={preferencias.nombre} onNombreChange={(n) => setPreferencias({ ...preferencias, nombre: n })} />;
+      case 2:
         return (
           <PasoPorcentaje porcentaje={preferencias.porcentaje} onPorcentajeChange={(p) => setPreferencias({ ...preferencias, porcentaje: p })} />
         );
-      case 2:
+      case 3:
         return (
           <PasoPrecios
             precioMin={preferencias.precioMin}
@@ -166,7 +173,7 @@ function App() {
             onPreciosChange={(min, max) => setPreferencias({ ...preferencias, precioMin: min, precioMax: max })}
           />
         );
-      case 3:
+      case 4:
         return (
           <PasoCategorias
             categoriasPrincipales={categoriasPrincipales}
