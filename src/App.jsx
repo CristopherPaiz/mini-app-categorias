@@ -72,6 +72,9 @@ function App() {
     try {
       const telegramId = tg.initDataUnsafe?.user?.id;
       const apiUrl = import.meta.env.VITE_API_URL;
+
+      console.log(`[MINIAPP_DEBUG] Intentando hacer fetch a: ${apiUrl}/api/usuario/${telegramId}/configuracion`);
+
       const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/configuracion`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,13 +87,16 @@ function App() {
         }),
       });
 
-      if (!response.ok) throw new Error("Error al guardar en el servidor.");
+      if (!response.ok) {
+        console.error("[MINIAPP_DEBUG] El fetch falló. Status:", response.status);
+        throw new Error("Error al guardar en el servidor.");
+      }
 
       tg.sendData(JSON.stringify({ status: "success" }));
       tg.close();
     } catch (error) {
-      console.error("Error saving data:", error);
-      tg.showAlert("No se pudieron guardar los cambios. Inténtalo de nuevo.");
+      console.error("[MINIAPP_DEBUG] Error en el bloque CATCH de handleSave:", error);
+      tg.showAlert(`Hubo un error de comunicación. Revisa la consola. Error: ${error.message}`);
       tg.MainButton.hideProgress();
       tg.MainButton.enable();
     }
