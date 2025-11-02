@@ -104,22 +104,19 @@ function App() {
     return () => tg.offEvent("mainButtonClicked", buttonAction);
   }, [paso, handleSave, loading]);
 
+  const handleBack = useCallback(() => {
+    setPaso((p) => Math.max(p - 1, 1));
+  }, []);
+
   useEffect(() => {
     if (paso > 1) {
       tg.BackButton.show();
     } else {
       tg.BackButton.hide();
     }
-  }, [paso]);
-
-  const handleBack = useCallback(() => {
-    setPaso((p) => Math.max(p - 1, 1));
-  }, []);
-
-  useEffect(() => {
     tg.onEvent("backButtonClicked", handleBack);
     return () => tg.offEvent("backButtonClicked", handleBack);
-  }, [handleBack]);
+  }, [paso, handleBack]);
 
   const subcategoriasMap = useMemo(
     () =>
@@ -189,10 +186,8 @@ function App() {
       {loading ? (
         <SkeletonLoader />
       ) : (
-        <div className="stepper-content">
-          <div className={`step-wrapper ${paso === 1 ? "active" : ""}`}>{renderStep()}</div>
-          <div className={`step-wrapper ${paso === 2 ? "active" : ""}`}>{renderStep()}</div>
-          <div className={`step-wrapper ${paso === 3 ? "active" : ""}`}>{renderStep()}</div>
+        <div className="step-content-wrapper" key={paso}>
+          {renderStep()}
         </div>
       )}
       <SubcategoryDrawer

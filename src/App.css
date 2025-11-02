@@ -11,49 +11,38 @@
 body {
   margin: 0;
   padding: 16px;
-  min-height: 100vh;
   background-color: var(--tg-theme-bg-color);
   overflow: hidden;
 }
 
 .app-container {
-  max-width: 600px;
-  margin: 0 auto;
-  position: relative;
-}
-
-.stepper-content {
   display: flex;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 32px); /* 100vh menos el padding del body */
   width: 100%;
 }
 
-.step-wrapper {
+.step-content-wrapper {
   width: 100%;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.4s ease-in-out;
-  visibility: hidden;
+  max-width: 600px;
+  animation: slideInUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.step-wrapper.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.step-container {
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-@keyframes fadeIn {
+@keyframes slideInUpFade {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.step-container {
+  width: 100%;
 }
 
 h2 {
@@ -70,6 +59,7 @@ p {
   margin-bottom: 24px;
   text-align: center;
   font-size: 15px;
+  padding: 0 16px;
 }
 
 /* Paso Porcentaje */
