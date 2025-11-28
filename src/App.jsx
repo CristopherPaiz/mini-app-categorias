@@ -3,6 +3,7 @@ import PasoNombre from "./components/PasoNombre";
 import PasoPorcentaje from "./components/PasoPorcentaje";
 import PasoPrecios from "./components/PasoPrecios";
 import PasoCategorias from "./components/PasoCategorias";
+import PasoFuentes from "./components/PasoFuentes";
 import SubcategoryDrawer from "./components/SubcategoryDrawer";
 import SkeletonLoader from "./components/Loader";
 import "./App.css";
@@ -14,6 +15,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [drawerState, setDrawerState] = useState({ open: false, categoria: null });
   const [categorias, setCategorias] = useState([]);
+  const [fuentes, setFuentes] = useState([]);
 
   const [preferencias, setPreferencias] = useState({
     nombre: "",
@@ -21,6 +23,7 @@ function App() {
     precioMin: 0,
     precioMax: 10000,
     seleccionadas: new Set(),
+    fuentesSeleccionadas: new Set(),
   });
 
   useEffect(() => {
@@ -35,24 +38,35 @@ function App() {
         if (!telegramId) throw new Error("ID de usuario no disponible.");
 
         const apiUrl = import.meta.env.VITE_API_URL;
-        const [categoriasRes, preferenciasRes] = await Promise.all([
+        const [categoriasRes, preferenciasRes, fuentesRes, fuentesUsuarioRes] = await Promise.all([
           fetch(`${apiUrl}/api/categorias`),
           fetch(`${apiUrl}/api/usuario/${telegramId}/preferencias`),
+          fetch(`${apiUrl}/api/fuentes`),
+          fetch(`${apiUrl}/api/usuario/${telegramId}/fuentes`),
         ]);
 
         const categoriasData = await categoriasRes.json();
         const preferenciasData = await preferenciasRes.json();
+        const fuentesData = await fuentesRes.json();
+        const fuentesUsuarioData = await fuentesUsuarioRes.json();
 
         if (categoriasData.status === "success") {
           setCategorias(categoriasData.data.categorias);
         }
+        if (fuentesData.status === "success") {
+          setFuentes(fuentesData.data);
+        }
+
         if (preferenciasData.status === "success") {
+          const fuentesIds = fuentesUsuarioData.status === "success" ? fuentesUsuarioData.data.map((f) => f.id) : [];
+
           setPreferencias({
             nombre: preferenciasData.data.nombre,
             porcentaje: preferenciasData.data.porcentajeDescuento,
             precioMin: preferenciasData.data.precioMin,
             precioMax: preferenciasData.data.precioMax,
             seleccionadas: new Set(preferenciasData.data.selectedIds),
+            fuentesSeleccionadas: new Set(fuentesIds),
           });
           if (preferenciasData.data.nombre && preferenciasData.data.nombre.trim().length > 0) {
             setPaso(2);
@@ -91,17 +105,26 @@ function App() {
       selectedIds: Array.from(preferencias.seleccionadas),
     };
 
+    const fuentesToSend = {
+      fuentesIds: Array.from(preferencias.fuentesSeleccionadas),
+    };
+
     try {
-      // Usamos fetch en lugar de tg.sendData porque tg.sendData no funciona con botones inline
-      const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/configuracion`, {
+      // Guardar configuración general
+      const responseConfig = await fetch(`${apiUrl}/api/usuario/${telegramId}/configuracion`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dataToSend),
       });
 
-      if (response.ok) {
+      // Guardar fuentes seleccionadas
+      const responseFuentes = await fetch(`${apiUrl}/api/usuario/${telegramId}/fuentes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fuentesToSend),
+      });
+
+      if (responseConfig.ok && responseFuentes.ok) {
         tg.close();
       } else {
         console.error("Error al guardar configuración en API");
@@ -117,11 +140,11 @@ function App() {
     }
   }, [preferencias]);
 
-  const handleNext = () => setPaso((p) => Math.min(p + 1, 4));
+  const handleNext = () => setPaso((p) => Math.min(p + 1, 5));
 
   useEffect(() => {
-    const buttonText = paso === 4 ? "Guardar Cambios" : "Siguiente";
-    const buttonAction = paso === 4 ? handleSave : handleNext;
+    const buttonText = paso === 5 ? "Guardar Cambios" : "Siguiente";
+    const buttonAction = paso === 5 ? handleSave : handleNext;
     const isEnabled = paso === 1 ? preferencias.nombre.trim().length > 0 : true;
 
     tg.MainButton.setParams({ text: buttonText, is_active: isEnabled, is_visible: !loading });
@@ -176,6 +199,14 @@ function App() {
     });
   };
 
+  const handleToggleFuente = (id) => {
+    setPreferencias((prev) => {
+      const nuevasFuentes = new Set(prev.fuentesSeleccionadas);
+      nuevasFuentes.has(id) ? nuevasFuentes.delete(id) : nuevasFuentes.add(id);
+      return { ...prev, fuentesSeleccionadas: nuevasFuentes };
+    });
+  };
+
   const categoriasPrincipales = useMemo(() => categorias.filter((c) => !c.padre_id), [categorias]);
 
   const renderStep = () => {
@@ -204,6 +235,8 @@ function App() {
             onOpenDrawer={(cat) => setDrawerState({ open: true, categoria: cat })}
           />
         );
+      case 5:
+        return <PasoFuentes fuentes={fuentes} seleccionadas={preferencias.fuentesSeleccionadas} onToggle={handleToggleFuente} />;
       default:
         return null;
     }
