@@ -68,33 +68,52 @@ function App() {
     fetchInitialData();
   }, []);
 
-  const handleSave = useCallback(() => {
-    console.log("[MINIAPP LOG] Se ha presionado 'Guardar Cambios'.");
+  const handleSave = useCallback(async () => {
     tg.MainButton.showProgress();
     tg.MainButton.disable();
 
-    const dataToSend = {
-      type: "save_configuration",
-      payload: {
-        nombre: preferencias.nombre,
-        porcentajeDescuento: preferencias.porcentaje,
-        precioMin: preferencias.precioMin,
-        precioMax: preferencias.precioMax,
-        selectedIds: Array.from(preferencias.seleccionadas),
-      },
-    };
+    const telegramId = tg.initDataUnsafe?.user?.id;
+    const apiUrl = import.meta.env.VITE_API_URL;
 
-    console.log("[MINIAPP LOG] Preparando para enviar los siguientes datos al bot:", JSON.stringify(dataToSend, null, 2));
-
-    try {
-      tg.sendData(JSON.stringify(dataToSend));
-      console.log("[MINIAPP LOG] tg.sendData ejecutado con éxito.");
-      tg.close();
-    } catch (error) {
-      console.error("[MINIAPP LOG] ERROR CATASTRÓFICO al intentar ejecutar tg.sendData:", error);
-      tg.showAlert(`Error al enviar datos: ${error.message}`);
+    if (!telegramId) {
+      console.error("No se pudo obtener el Telegram ID");
       tg.MainButton.hideProgress();
       tg.MainButton.enable();
+      alert("Error: No se pudo identificar al usuario.");
+      return;
+    }
+
+    const dataToSend = {
+      nombre: preferencias.nombre,
+      porcentajeDescuento: preferencias.porcentaje,
+      precioMin: preferencias.precioMin,
+      precioMax: preferencias.precioMax,
+      selectedIds: Array.from(preferencias.seleccionadas),
+    };
+
+    try {
+      // Usamos fetch en lugar de tg.sendData porque tg.sendData no funciona con botones inline
+      const response = await fetch(`${apiUrl}/api/usuario/${telegramId}/configuracion`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dataToSend),
+      });
+
+      if (response.ok) {
+        tg.close();
+      } else {
+        console.error("Error al guardar configuración en API");
+        tg.MainButton.hideProgress();
+        tg.MainButton.enable();
+        alert("Hubo un error al guardar. Inténtalo de nuevo.");
+      }
+    } catch (error) {
+      console.error("Error de red:", error);
+      tg.MainButton.hideProgress();
+      tg.MainButton.enable();
+      alert("Error de conexión. Verifica tu internet.");
     }
   }, [preferencias]);
 
