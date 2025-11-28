@@ -54,6 +54,9 @@ function App() {
             precioMax: preferenciasData.data.precioMax,
             seleccionadas: new Set(preferenciasData.data.selectedIds),
           });
+          if (preferenciasData.data.nombre && preferenciasData.data.nombre.trim().length > 0) {
+            setPaso(2);
+          }
         }
       } catch (error) {
         console.error("Error fetching initial data:", error);
